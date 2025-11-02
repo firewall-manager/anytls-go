@@ -156,11 +156,10 @@ func (r *PipeReader) CloseWithError(err error) error {
 // PipeWriter 是管道的写入端。
 type PipeWriter struct{ r PipeReader }
 
-// Write implements the standard Write interface:
-// it writes data to the pipe, blocking until one or more readers
-// have consumed all the data or the read end is closed.
-// If the read end is closed with an error, that err is
-// returned as err; otherwise err is [ErrClosedPipe].
+// Write 实现标准的 Write 接口：
+// 向管道写入数据，阻塞直到一个或多个读取者
+// 已消费所有数据或读取端已关闭。
+// 如果读取端因错误关闭，则返回该错误；否则返回 ErrClosedPipe。
 func (w *PipeWriter) Write(data []byte) (n int, err error) {
 	return w.r.pipe.write(data)
 }
