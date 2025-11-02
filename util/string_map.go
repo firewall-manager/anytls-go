@@ -1,3 +1,4 @@
+// Package util 提供了一些通用的工具函数和类型。
 package util
 
 import (

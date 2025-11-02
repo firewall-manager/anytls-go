@@ -1,3 +1,4 @@
+// Package util 提供了一些通用的工具函数和类型。
 package util
 
 import (
@@ -11,6 +12,10 @@ import (
 	"time"
 )
 
+// GenerateKeyPair 生成一个 TLS 证书和私钥对。
+// timeFunc: 用于获取当前时间的函数，如果为 nil 则使用 time.Now
+// serverName: 服务器名称，用于证书的 CommonName 和 DNSNames
+// 返回生成的 TLS 证书
 func GenerateKeyPair(timeFunc func() time.Time, serverName string) (*tls.Certificate, error) {
 	if timeFunc == nil {
 		timeFunc = time.Now

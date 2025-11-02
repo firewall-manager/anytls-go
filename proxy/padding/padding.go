@@ -1,3 +1,5 @@
+// Package padding 实现了填充策略功能，用于模拟真实的 TLS 流量特征。
+// 通过填充数据包来缓解 TLS in TLS 指纹识别问题。
 package padding
 
 import (
@@ -12,6 +14,7 @@ import (
 	"github.com/sagernet/sing/common/atomic"
 )
 
+// CheckMark 是一个特殊标记，用于填充策略中的检查点。
 const CheckMark = -1
 
 var defaultPaddingScheme = []byte(`stop=8
@@ -24,19 +27,25 @@ var defaultPaddingScheme = []byte(`stop=8
 6=500-1000
 7=500-1000`)
 
+// PaddingFactory 用于生成填充数据包大小的工厂。
+// 根据配置的策略生成符合真实 TLS 流量特征的数据包。
 type PaddingFactory struct {
 	scheme    util.StringMap
 	RawScheme []byte
 	Stop      uint32
-	Md5       string
+	Md5       string // 填充策略的 MD5 哈希值
 }
 
+// DefaultPaddingFactory 默认的填充策略工厂。
 var DefaultPaddingFactory atomic.TypedValue[*PaddingFactory]
 
 func init() {
 	UpdatePaddingScheme(defaultPaddingScheme)
 }
 
+// UpdatePaddingScheme 更新默认填充策略。
+// rawScheme: 填充策略的原始字节数据
+// 返回是否更新成功
 func UpdatePaddingScheme(rawScheme []byte) bool {
 	if p := NewPaddingFactory(rawScheme); p != nil {
 		DefaultPaddingFactory.Store(p)
@@ -45,6 +54,8 @@ func UpdatePaddingScheme(rawScheme []byte) bool {
 	return false
 }
 
+// NewPaddingFactory 从原始策略数据创建填充工厂。
+// rawScheme: 填充策略的原始字节数据，格式为键值对（每行一个，用=分隔）
 func NewPaddingFactory(rawScheme []byte) *PaddingFactory {
 	p := &PaddingFactory{
 		RawScheme: rawScheme,
@@ -63,6 +74,9 @@ func NewPaddingFactory(rawScheme []byte) *PaddingFactory {
 	return p
 }
 
+// GenerateRecordPayloadSizes 根据数据包序号生成填充记录的有效载荷大小。
+// pkt: 数据包序号（从0开始）
+// 返回该数据包应该包含的所有记录大小列表
 func (p *PaddingFactory) GenerateRecordPayloadSizes(pkt uint32) (pktSizes []int) {
 	if s, ok := p.scheme[strconv.Itoa(int(pkt))]; ok {
 		sRanges := strings.Split(s, ",")

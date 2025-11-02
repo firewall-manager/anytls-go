@@ -2,9 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Pipe adapter to connect code expecting an io.Reader
-// with code expecting an io.Writer.
-
+// Package pipe 提供了管道适配器，用于连接期望 io.Reader 的代码和期望 io.Writer 的代码。
+// 这是基于标准库 io.Pipe 的扩展版本，增加了超时支持。
 package pipe
 
 import (
@@ -14,7 +13,7 @@ import (
 	"time"
 )
 
-// onceError is an object that will only store an error once.
+// onceError 是一个只存储一次错误的对象。
 type onceError struct {
 	sync.Mutex // guards following
 	err        error
@@ -34,7 +33,7 @@ func (a *onceError) Load() error {
 	return a.err
 }
 
-// A pipe is the shared pipe structure underlying PipeReader and PipeWriter.
+// pipe 是 PipeReader 和 PipeWriter 共享的底层管道结构。
 type pipe struct {
 	wrMu sync.Mutex // Serializes Write operations
 	wrCh chan []byte
@@ -114,7 +113,7 @@ func (p *pipe) closeWrite(err error) error {
 	return nil
 }
 
-// readCloseError is considered internal to the pipe type.
+// readCloseError 是 pipe 类型的内部方法，返回读取端关闭时的错误。
 func (p *pipe) readCloseError() error {
 	rerr := p.rerr.Load()
 	if werr := p.werr.Load(); rerr == nil && werr != nil {
@@ -123,7 +122,7 @@ func (p *pipe) readCloseError() error {
 	return io.ErrClosedPipe
 }
 
-// writeCloseError is considered internal to the pipe type.
+// writeCloseError 是 pipe 类型的内部方法，返回写入端关闭时的错误。
 func (p *pipe) writeCloseError() error {
 	werr := p.werr.Load()
 	if rerr := p.rerr.Load(); werr == nil && rerr != nil {

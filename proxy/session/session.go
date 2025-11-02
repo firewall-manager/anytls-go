@@ -1,3 +1,5 @@
+// Package session 实现了 AnyTLS 协议的会话和流管理功能。
+// 会话负责管理多个流（Stream），每个流代表一个代理连接。
 package session
 
 import (
@@ -22,6 +24,8 @@ import (
 
 var clientDebugPaddingScheme = os.Getenv("CLIENT_DEBUG_PADDING_SCHEME") == "1"
 
+// Session 表示一个 AnyTLS 会话，管理多个流（Stream）的生命周期。
+// 会话可以在客户端和服务器之间复用，以提高连接效率。
 type Session struct {
 	conn     net.Conn
 	connLock sync.Mutex
@@ -52,9 +56,12 @@ type Session struct {
 	pktCounter  atomic.Uint32
 
 	// server
-	onNewStream func(stream *Stream)
+	onNewStream func(stream *Stream) // 服务器端：当新流创建时的回调函数
 }
 
+// NewClientSession 创建一个新的客户端会话。
+// conn: 底层网络连接
+// _padding: 填充策略工厂，用于生成填充数据
 func NewClientSession(conn net.Conn, _padding *atomic.TypedValue[*padding.PaddingFactory]) *Session {
 	s := &Session{
 		conn:        conn,
@@ -67,6 +74,10 @@ func NewClientSession(conn net.Conn, _padding *atomic.TypedValue[*padding.Paddin
 	return s
 }
 
+// NewServerSession 创建一个新的服务器端会话。
+// conn: 底层网络连接
+// onNewStream: 当新流创建时的回调函数
+// _padding: 填充策略工厂，用于生成填充数据
 func NewServerSession(conn net.Conn, onNewStream func(stream *Stream), _padding *atomic.TypedValue[*padding.PaddingFactory]) *Session {
 	s := &Session{
 		conn:        conn,
@@ -78,6 +89,8 @@ func NewServerSession(conn net.Conn, onNewStream func(stream *Stream), _padding 
 	return s
 }
 
+// Run 启动会话的接收循环。对于客户端，会先发送设置帧，然后启动接收循环。
+// 对于服务器端，直接启动接收循环等待客户端数据。
 func (s *Session) Run() {
 	if !s.isClient {
 		s.recvLoop()
@@ -97,7 +110,7 @@ func (s *Session) Run() {
 	go s.recvLoop()
 }
 
-// IsClosed does a safe check to see if we have shutdown
+// IsClosed 安全地检查会话是否已关闭。
 func (s *Session) IsClosed() bool {
 	select {
 	case <-s.die:
@@ -107,7 +120,7 @@ func (s *Session) IsClosed() bool {
 	}
 }
 
-// Close is used to close the session and all streams.
+// Close 关闭会话和所有相关的流。
 func (s *Session) Close() error {
 	var once bool
 	s.dieOnce.Do(func() {
@@ -131,7 +144,8 @@ func (s *Session) Close() error {
 	}
 }
 
-// OpenStream is used to create a new stream for CLIENT
+// OpenStream 在客户端会话中创建一个新的流。
+// 返回新创建的流，如果会话已关闭则返回错误。
 func (s *Session) OpenStream() (*Stream, error) {
 	if s.IsClosed() {
 		return nil, io.ErrClosedPipe
@@ -170,6 +184,8 @@ func (s *Session) OpenStream() (*Stream, error) {
 	}
 }
 
+// recvLoop 接收循环，处理来自对端的所有数据帧。
+// 根据帧类型（PSH、SYN、FIN等）执行相应的操作。
 func (s *Session) recvLoop() error {
 	defer func() {
 		if r := recover(); r != nil {
@@ -363,6 +379,7 @@ func (s *Session) recvLoop() error {
 	}
 }
 
+// streamClosed 当流关闭时调用，向对端发送 FIN 帧并清理本地流。
 func (s *Session) streamClosed(sid uint32) error {
 	if s.IsClosed() {
 		return io.ErrClosedPipe
@@ -374,6 +391,7 @@ func (s *Session) streamClosed(sid uint32) error {
 	return err
 }
 
+// writeDataFrame 写入数据帧（PSH 命令）到连接。
 func (s *Session) writeDataFrame(sid uint32, data []byte) (int, error) {
 	dataLen := len(data)
 
@@ -391,6 +409,7 @@ func (s *Session) writeDataFrame(sid uint32, data []byte) (int, error) {
 	return dataLen, nil
 }
 
+// writeControlFrame 写入控制帧（如 SYN、FIN、Settings 等）到连接。
 func (s *Session) writeControlFrame(frame frame) (int, error) {
 	dataLen := len(frame.data)
 
@@ -414,6 +433,7 @@ func (s *Session) writeControlFrame(frame frame) (int, error) {
 	return dataLen, nil
 }
 
+// writeConn 将数据写入底层连接，如果启用填充则应用填充策略。
 func (s *Session) writeConn(b []byte) (n int, err error) {
 	s.connLock.Lock()
 	defer s.connLock.Unlock()

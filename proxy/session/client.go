@@ -1,3 +1,4 @@
+// Package session 实现了 AnyTLS 协议的会话和流管理功能。
 package session
 
 import (
@@ -19,6 +20,8 @@ import (
 
 var clientDebugSessionPool = os.Getenv("CLIENT_DEBUG_SESSION_POOL") == "1"
 
+// Client 管理客户端会话的创建、复用和清理。
+// 支持会话池机制，可以复用空闲会话以提高性能。
 type Client struct {
 	die       context.Context
 	dieCancel context.CancelFunc
@@ -36,9 +39,16 @@ type Client struct {
 	padding *atomic.TypedValue[*padding.PaddingFactory]
 
 	idleSessionTimeout time.Duration
-	minIdleSession     int
+	minIdleSession     int // 保持的最小空闲会话数
 }
 
+// NewClient 创建一个新的客户端会话管理器。
+// ctx: 上下文，用于控制客户端生命周期
+// dialOut: 用于创建新连接的函数
+// _padding: 填充策略工厂
+// idleSessionCheckInterval: 空闲会话检查间隔
+// idleSessionTimeout: 空闲会话超时时间
+// minIdleSession: 保持的最小空闲会话数
 func NewClient(ctx context.Context, dialOut util.DialOutFunc,
 	_padding *atomic.TypedValue[*padding.PaddingFactory], idleSessionCheckInterval, idleSessionTimeout time.Duration, minIdleSession int,
 ) *Client {
@@ -61,6 +71,8 @@ func NewClient(ctx context.Context, dialOut util.DialOutFunc,
 	return c
 }
 
+// CreateStream 创建一个新的流连接。
+// 优先从空闲会话池中获取会话，如果没有则创建新会话。
 func (c *Client) CreateStream(ctx context.Context) (net.Conn, error) {
 	select {
 	case <-c.die.Done():
@@ -118,6 +130,7 @@ func (c *Client) CreateStream(ctx context.Context) (net.Conn, error) {
 	return stream, nil
 }
 
+// getIdleSession 从空闲会话池中获取一个会话。
 func (c *Client) getIdleSession() (idle *Session) {
 	c.idleSessionLock.Lock()
 	if !c.idleSession.IsEmpty() {
@@ -129,6 +142,7 @@ func (c *Client) getIdleSession() (idle *Session) {
 	return
 }
 
+// createSession 创建一个新的会话并启动它。
 func (c *Client) createSession(ctx context.Context) (*Session, error) {
 	underlying, err := c.dialOut(ctx)
 	if err != nil {
@@ -159,6 +173,7 @@ func (c *Client) createSession(ctx context.Context) (*Session, error) {
 	return session, nil
 }
 
+// Close 关闭客户端，关闭所有会话。
 func (c *Client) Close() error {
 	c.dieCancel()
 
@@ -177,10 +192,13 @@ func (c *Client) Close() error {
 	return nil
 }
 
+// idleCleanup 清理超时的空闲会话。
 func (c *Client) idleCleanup() {
 	c.idleCleanupExpTime(time.Now().Add(-c.idleSessionTimeout))
 }
 
+// idleCleanupExpTime 清理在指定时间之前变为空闲的会话。
+// 但至少保留 minIdleSession 个空闲会话。
 func (c *Client) idleCleanupExpTime(expTime time.Time) {
 	activeCount := 0
 	var sessionToClose []*Session
