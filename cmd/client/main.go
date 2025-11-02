@@ -1,3 +1,5 @@
+// Package main 实现了 AnyTLS 协议的客户端。
+// 客户端监听本地 SOCKS5/HTTP 代理端口，将流量通过 AnyTLS 协议转发到服务器。
 package main
 
 import (
@@ -14,8 +16,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// passwordSha256 存储密码的 SHA256 哈希值。
 var passwordSha256 []byte
 
+// main 是客户端程序的入口点。
 func main() {
 	listen := flag.String("l", "127.0.0.1:1080", "socks5 listen port")
 	serverAddr := flag.String("s", "127.0.0.1:8443", "server address")

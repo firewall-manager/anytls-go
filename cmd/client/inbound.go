@@ -1,3 +1,4 @@
+// Package main 实现了 AnyTLS 协议的客户端。
 package main
 
 import (
@@ -17,6 +18,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// handleTcpConnection 处理来自客户端的 TCP 连接。
+// 根据连接的第一个字节判断是 SOCKS4/SOCKS5 还是 HTTP 代理请求。
 func handleTcpConnection(ctx context.Context, c net.Conn, s *myClient) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -44,8 +47,7 @@ func handleTcpConnection(ctx context.Context, c net.Conn, s *myClient) {
 	}
 }
 
-// sing socks inbound
-
+// NewConnection 处理新的 TCP 连接（sing 框架的接口实现）。
 func (c *myClient) NewConnection(ctx context.Context, conn net.Conn, metadata M.Metadata) error {
 	proxyC, err := c.CreateProxy(ctx, metadata.Destination)
 	if err != nil {
@@ -57,6 +59,8 @@ func (c *myClient) NewConnection(ctx context.Context, conn net.Conn, metadata M.
 	return bufio.CopyConn(ctx, conn, proxyC)
 }
 
+// NewPacketConnection 处理新的 UDP 数据包连接（sing 框架的接口实现）。
+// 使用 UDP over TCP (UoT) 方式传输 UDP 数据包。
 func (c *myClient) NewPacketConnection(ctx context.Context, conn network.PacketConn, metadata M.Metadata) error {
 	proxyC, err := c.CreateProxy(ctx, uot.RequestDestination(2))
 	if err != nil {

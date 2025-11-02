@@ -1,3 +1,4 @@
+// Package pipe 提供了管道适配器，用于连接期望 io.Reader 的代码和期望 io.Writer 的代码。
 package pipe
 
 import (
@@ -5,23 +6,23 @@ import (
 	"time"
 )
 
-// PipeDeadline is an abstraction for handling timeouts.
+// PipeDeadline 是处理超时的抽象。
 type PipeDeadline struct {
 	mu     sync.Mutex // Guards timer and cancel
 	timer  *time.Timer
-	cancel chan struct{} // Must be non-nil
+	cancel chan struct{} // 必须非 nil
 }
 
+// MakePipeDeadline 创建一个新的管道截止时间对象。
 func MakePipeDeadline() PipeDeadline {
 	return PipeDeadline{cancel: make(chan struct{})}
 }
 
-// Set sets the point in time when the deadline will time out.
-// A timeout event is signaled by closing the channel returned by waiter.
-// Once a timeout has occurred, the deadline can be refreshed by specifying a
-// t value in the future.
+// Set 设置截止时间超时的时点。
+// 超时事件通过关闭由 waiter 返回的通道来发出信号。
+// 一旦发生超时，可以通过指定将来的 t 值来刷新截止时间。
 //
-// A zero value for t prevents timeout.
+// t 的零值表示不设置超时。
 func (d *PipeDeadline) Set(t time.Time) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -57,13 +58,14 @@ func (d *PipeDeadline) Set(t time.Time) {
 	}
 }
 
-// Wait returns a channel that is closed when the deadline is exceeded.
+// Wait 返回一个通道，当截止时间超过时该通道会被关闭。
 func (d *PipeDeadline) Wait() chan struct{} {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	return d.cancel
 }
 
+// isClosedChan 检查通道是否已关闭。
 func isClosedChan(c <-chan struct{}) bool {
 	select {
 	case <-c:

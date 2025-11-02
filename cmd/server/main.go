@@ -1,3 +1,5 @@
+// Package main 实现了 AnyTLS 协议的服务器端。
+// 服务器监听指定端口，接收客户端的 AnyTLS 连接，并将流量转发到目标地址。
 package main
 
 import (
@@ -15,8 +17,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// passwordSha256 存储密码的 SHA256 哈希值。
 var passwordSha256 []byte
 
+// main 是服务器程序的入口点。
 func main() {
 	listen := flag.String("l", "0.0.0.0:8443", "server listen port")
 	password := flag.String("p", "", "password")

@@ -1,3 +1,4 @@
+// Package main 实现了 AnyTLS 协议的服务器端。
 package main
 
 import (
@@ -17,6 +18,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// handleTcpConnection 处理来自客户端的 TCP 连接。
+// 首先进行 TLS 握手，然后验证密码，最后创建会话处理代理请求。
 func handleTcpConnection(ctx context.Context, c net.Conn, s *myServer) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -83,6 +86,7 @@ func handleTcpConnection(ctx context.Context, c net.Conn, s *myServer) {
 	session.Close()
 }
 
+// fallback 处理无法识别的连接（暂未实现）。
 func fallback(ctx context.Context, c net.Conn) {
 	// 暂未实现
 	logrus.Debugln("fallback:", c.RemoteAddr())
